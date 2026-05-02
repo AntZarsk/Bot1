@@ -70,7 +70,7 @@ def append_post_log(post: PublishedPost) -> None:
         return
 
     if not settings.google_sheets_webhook_url:
-        raise ValueError("GOOGLE_SHEETS_WEBHOOK_URL is not configured")
+        return
 
     payload: Dict[str, Any] = {
         "published_at": post.published_at.strftime("%Y-%m-%d %H:%M:%S"),
