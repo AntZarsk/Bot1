@@ -25,7 +25,7 @@ def main() -> int:
     result = publish_one_fact()
     if result is None:
         print(f"[{now.isoformat(timespec='seconds')}] No post published")
-        return 1
+        return 0
 
     print(
         f"[{now.isoformat(timespec='seconds')}] Published: "
