@@ -7,6 +7,9 @@ from app.config import settings
 from app.main import publish_one_fact
 
 
+ALLOWED_HOURS = {23, 3, 7, 11, 15, 19}
+
+
 def _mask(value: str, visible: int = 4) -> str:
     if not value:
         return "<empty>"
@@ -37,11 +40,22 @@ def _print_env_diagnostics() -> None:
     )
 
 
+def _should_publish(now: datetime) -> bool:
+    return now.hour in ALLOWED_HOURS and now.minute == 0
+
+
 def main() -> int:
     now = datetime.now(ZoneInfo(settings.timezone))
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
     _validate_required_env()
     _print_env_diagnostics()
+
+    if not _should_publish(now):
+        print(
+            f"[{now.isoformat(timespec='seconds')}] Not a publish slot, skipping "
+            f"(allowed hours: {sorted(ALLOWED_HOURS)})"
+        )
+        return 0
 
     try:
         post = publish_one_fact()
