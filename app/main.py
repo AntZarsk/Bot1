@@ -61,52 +61,52 @@ def publish_one_fact() -> Optional[PublishedPost]:
     ensure_dir(settings.data_dir)
     ensure_dir(settings.media_dir)
 
+    logger.info("Collecting raw facts")
     facts = collect_raw_facts()
     if not facts:
-        logger.warning("No raw facts collected")
-        return None
+        raise RuntimeError("No raw facts collected")
 
     raw_fact = pick_unused_fact(facts)
     if raw_fact is None:
-        logger.warning("No unused facts found")
-        return None
+        raise RuntimeError("No unused facts found")
 
     fact_key = normalize_fact_key(raw_fact.source, raw_fact.source_id, raw_fact.text)
 
+    logger.info("Processing fact with Gemini or fallback")
     try:
-        try:
-            processed = process_fact_with_gemini(raw_fact)
-        except Exception as gemini_exc:
-            logger.warning("Gemini failed, using local fallback: %s", gemini_exc)
-            processed = build_local_processed_post(raw_fact)
+        processed = process_fact_with_gemini(raw_fact)
+    except Exception as gemini_exc:
+        logger.warning("Gemini failed, using local fallback: %s", gemini_exc)
+        processed = build_local_processed_post(raw_fact)
 
-        media = generate_cover_image(processed.image_prompt, processed.title)
-        message_id = publish_to_telegram(media.path, processed.caption)
-        instagram_media_id = None
+    logger.info("Generating cover image")
+    media = generate_cover_image(processed.image_prompt, processed.title)
 
-        try:
-            instagram_media_id = publish_to_instagram(media.path, processed.caption)
-        except Exception as instagram_exc:
-            logger.warning("Instagram publish failed: %s", instagram_exc)
+    logger.info("Publishing to Telegram")
+    message_id = publish_to_telegram(media.path, processed.caption)
 
-        published = PublishedPost(
-            published_at=datetime.now(),
-            title=processed.title,
-            caption=processed.caption,
-            media_path=media.path,
-            telegram_message_id=message_id,
-            instagram_media_id=instagram_media_id,
-            status="Published",
-            source=raw_fact.source,
-            source_id=raw_fact.source_id,
-        )
-        append_post_log(published)
-        append_used_key(settings.used_facts_file, fact_key)
-        logger.info("Published post: %s", processed.title)
-        return published
-    except Exception as exc:
-        logger.exception("Failed to publish fact: %s", exc)
-        return None
+    instagram_media_id = None
+    try:
+        logger.info("Publishing to Instagram")
+        instagram_media_id = publish_to_instagram(media.path, processed.caption)
+    except Exception as instagram_exc:
+        logger.warning("Instagram publish failed: %s", instagram_exc)
+
+    published = PublishedPost(
+        published_at=datetime.now(),
+        title=processed.title,
+        caption=processed.caption,
+        media_path=media.path,
+        telegram_message_id=message_id,
+        instagram_media_id=instagram_media_id,
+        status="Published",
+        source=raw_fact.source,
+        source_id=raw_fact.source_id,
+    )
+    append_post_log(published)
+    append_used_key(settings.used_facts_file, fact_key)
+    logger.info("Published post: %s", processed.title)
+    return published
 
 
 def main() -> None:
