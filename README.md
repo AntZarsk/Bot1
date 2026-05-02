@@ -152,6 +152,8 @@ python app/main.py
 - `INSTAGRAM_USER_ID`
 - `INSTAGRAM_IMAGE_URL_BASE`
 
+Якщо GitHub Actions повертає `Telegram API error: ... 404 Not Found`, це майже завжди означає, що `TELEGRAM_BOT_TOKEN` у Secrets неправильний, застарілий або порожній. Оновіть саме Secret у GitHub, а не код у репозиторії.
+
 #### Workflow
 Файл:
 ```text
