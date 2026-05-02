@@ -5,6 +5,7 @@ from zoneinfo import ZoneInfo
 
 from app.config import settings
 from app.main import publish_one_fact
+from app.telegram_publisher import publish_text_to_telegram
 
 
 TARGET_HOUR = 23
@@ -22,16 +23,33 @@ def main() -> int:
         return 0
 
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
-    result = publish_one_fact()
-    if result is None:
-        print(f"[{now.isoformat(timespec='seconds')}] No post published")
+    try:
+        result = publish_one_fact()
+        if result is None:
+            raise RuntimeError("publish_one_fact returned no result")
+        print(
+            f"[{now.isoformat(timespec='seconds')}] Published: "
+            f"{result.title} | Telegram ID: {result.telegram_message_id}"
+        )
         return 0
-
-    print(
-        f"[{now.isoformat(timespec='seconds')}] Published: "
-        f"{result.title} | Telegram ID: {result.telegram_message_id}"
-    )
-    return 0
+    except Exception as exc:
+        print(f"[{now.isoformat(timespec='seconds')}] Publish pipeline failed: {exc}")
+        try:
+            message_id = publish_text_to_telegram(
+                "Тестовий пост ✅\n\nАвтопублікація не змогла пройти повний пайплайн, "
+                "тому відправлено запасний текстовий пост."
+            )
+            print(
+                f"[{now.isoformat(timespec='seconds')}] Fallback text published: "
+                f"Telegram ID: {message_id}"
+            )
+            return 0
+        except Exception as fallback_exc:
+            print(
+                f"[{now.isoformat(timespec='seconds')}] Fallback text publish failed: "
+                f"{fallback_exc}"
+            )
+            return 1
 
 
 if __name__ == "__main__":
