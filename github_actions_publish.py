@@ -8,11 +8,6 @@ from zoneinfo import ZoneInfo
 from app.config import settings
 
 
-TARGET_HOUR = 23
-TARGET_MINUTE = 5
-MAX_START_MINUTE = 59
-
-
 def _send_text_via_curl(text: str) -> int:
     api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
     command = [
@@ -39,14 +34,8 @@ def _send_text_via_curl(text: str) -> int:
 
 def main() -> int:
     now = datetime.now(ZoneInfo(settings.timezone))
-    if now.hour != TARGET_HOUR or now.minute < TARGET_MINUTE or now.minute > MAX_START_MINUTE:
-        print(
-            f"[{now.isoformat(timespec='seconds')}] Not the scheduled slot "
-            f"{TARGET_HOUR:02d}:{TARGET_MINUTE:02d}+ for {settings.timezone}; skipping"
-        )
-        return 0
-
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
+
     try:
         message_id = _send_text_via_curl(
             "Тестовий пост ✅\n\nПублікацію запущено через GitHub Actions."
