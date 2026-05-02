@@ -1,0 +1,14 @@
+[Unit]
+Description=Telegram World Facts Bot Scheduler
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/Users/antonzaritskyi/Desktop/project2
+ExecStart=/usr/bin/python3 /Users/antonzaritskyi/Desktop/project2/run_scheduler.py
+Restart=always
+RestartSec=10
+EnvironmentFile=/Users/antonzaritskyi/Desktop/project2/.env
+
+[Install]
+WantedBy=multi-user.target
