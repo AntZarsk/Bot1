@@ -46,6 +46,11 @@ async def _send_media_async(media_path: str, caption: str) -> Optional[int]:
             files=files,
             timeout=120,
         )
+        if response.status_code == 404:
+            raise ValueError(
+                "Telegram API returned 404 Not Found. Check TELEGRAM_BOT_TOKEN "
+                "and make sure the bot token is valid."
+            )
         response.raise_for_status()
         payload = response.json()
 
@@ -85,6 +90,11 @@ def publish_text_to_telegram(text: str) -> Optional[int]:
         },
         timeout=120,
     )
+    if response.status_code == 404:
+        raise ValueError(
+            "Telegram API returned 404 Not Found. Check TELEGRAM_BOT_TOKEN "
+            "and make sure the bot token is valid."
+        )
     response.raise_for_status()
     payload = response.json()
 

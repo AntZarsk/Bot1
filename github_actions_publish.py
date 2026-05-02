@@ -1,50 +1,43 @@
 from __future__ import annotations
 
 from datetime import datetime
-import json
-import subprocess
 from zoneinfo import ZoneInfo
 
 from app.config import settings
+from app.main import publish_one_fact
 
 
-def _send_text_via_curl(text: str) -> int:
-    api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-    command = [
-        "curl",
-        "-sS",
-        "-X",
-        "POST",
-        api_url,
-        "--data-urlencode",
-        f"chat_id={settings.telegram_channel_id}",
-        "--data-urlencode",
-        f"text={text}",
-        "--data-urlencode",
-        "disable_web_page_preview=true",
-    ]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0:
-        raise RuntimeError(completed.stderr.strip() or "curl failed")
-    payload = json.loads(completed.stdout or "{}")
-    if not payload.get("ok"):
-        raise RuntimeError(f"Telegram API error: {payload}")
-    return int(payload.get("result", {}).get("message_id", 0))
+def _validate_required_env() -> None:
+    missing = []
+    if not settings.telegram_bot_token:
+        missing.append("TELEGRAM_BOT_TOKEN")
+    if not settings.telegram_channel_id:
+        missing.append("TELEGRAM_CHANNEL_ID")
+    if not settings.gemini_api_key:
+        missing.append("GEMINI_API_KEY")
+
+    if missing:
+        raise ValueError(f"Missing required environment variables: {', '.join(missing)}")
 
 
 def main() -> int:
     now = datetime.now(ZoneInfo(settings.timezone))
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
+    _validate_required_env()
 
     try:
-        message_id = _send_text_via_curl("Test message from API")
+        post = publish_one_fact()
+        if post is None:
+            print(f"[{now.isoformat(timespec='seconds')}] No post published")
+            return 1
+
         print(
-            f"[{now.isoformat(timespec='seconds')}] Telegram text published via curl: "
-            f"Telegram ID: {message_id}"
+            f"[{now.isoformat(timespec='seconds')}] Telegram post published: "
+            f"{post.title} | Telegram ID: {post.telegram_message_id}"
         )
         return 0
     except Exception as exc:
-        print(f"[{now.isoformat(timespec='seconds')}] Telegram publish failed: {exc}")
+        print(f"[{now.isoformat(timespec='seconds')}] Publish failed: {exc}")
         return 1
 
 

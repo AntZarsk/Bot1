@@ -61,10 +61,10 @@
     </array>
 
     <key>StandardOutPath</key>
-    <string>/Users/antonzaritskyi/Desktop/project2/logs/launchd.out.log</string>
+    <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/logs/launchd.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/antonzaritskyi/Desktop/project2/logs/launchd.err.log</string>
+    <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/logs/launchd.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
