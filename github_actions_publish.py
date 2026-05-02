@@ -7,15 +7,16 @@ from app.config import settings
 from app.main import publish_one_fact
 
 
-TARGET_HOURS = {23, 3, 7, 11, 15, 19}
+TARGET_HOUR = 22
+TARGET_MINUTE = 50
 
 
 def main() -> int:
     now = datetime.now(ZoneInfo(settings.timezone))
-    if now.minute != 0 or now.hour not in TARGET_HOURS:
+    if now.hour != TARGET_HOUR or now.minute != TARGET_MINUTE:
         print(
-            f"[{now.isoformat(timespec='seconds')}] Not a scheduled slot for "
-            f"{settings.timezone}; skipping"
+            f"[{now.isoformat(timespec='seconds')}] Not the scheduled slot "
+            f"{TARGET_HOUR:02d}:{TARGET_MINUTE:02d} for {settings.timezone}; skipping"
         )
         return 0
 
