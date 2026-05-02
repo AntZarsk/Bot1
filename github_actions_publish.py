@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import os
 
 from app.config import settings
 from app.main import publish_one_fact
@@ -41,6 +42,8 @@ def _print_env_diagnostics() -> None:
 
 
 def _should_publish(now: datetime) -> bool:
+    if os.getenv("FORCE_PUBLISH", "").strip() == "1":
+        return True
     return now.hour in ALLOWED_HOURS and now.minute == 0
 
 
