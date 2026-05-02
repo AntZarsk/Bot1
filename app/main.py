@@ -11,7 +11,7 @@ from app.instagram_publisher import publish_to_instagram
 from app.media_generator import generate_cover_image
 from app.models import PublishedPost, RawFact, ProcessedPost
 from app.sheets_logger import append_post_log
-from app.telegram_publisher import publish_to_telegram
+from app.telegram_publisher import publish_text_to_telegram, publish_to_telegram
 from app.utils import append_used_key, ensure_dir, normalize_fact_key, read_used_keys
 
 
@@ -83,7 +83,11 @@ def publish_one_fact() -> Optional[PublishedPost]:
     media = generate_cover_image(processed.image_prompt, processed.title)
 
     logger.info("Publishing to Telegram")
-    message_id = publish_to_telegram(media.path, processed.caption)
+    try:
+        message_id = publish_to_telegram(media.path, processed.caption)
+    except Exception as telegram_exc:
+        logger.warning("Media Telegram publish failed, falling back to text: %s", telegram_exc)
+        message_id = publish_text_to_telegram(f"{processed.title}\n\n{processed.caption}")
 
     instagram_media_id = None
     try:

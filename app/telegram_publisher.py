@@ -10,6 +10,7 @@ from app.config import settings
 
 
 CAPTION_LIMIT = 1024
+TEXT_LIMIT = 4096
 
 
 def _trim_caption(caption: str) -> str:
@@ -62,3 +63,33 @@ def publish_to_telegram(media_path: str, caption: str) -> Optional[int]:
         raise ValueError("TELEGRAM_CHANNEL_ID is not configured")
 
     return asyncio.run(_send_media_async(media_path, caption))
+
+
+def publish_text_to_telegram(text: str) -> Optional[int]:
+    if not settings.telegram_bot_token:
+        raise ValueError("TELEGRAM_BOT_TOKEN is not configured")
+    if not settings.telegram_channel_id:
+        raise ValueError("TELEGRAM_CHANNEL_ID is not configured")
+
+    normalized = text.strip()
+    if len(normalized) > TEXT_LIMIT:
+        normalized = normalized[: TEXT_LIMIT - 1].rstrip() + "…"
+
+    api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+    response = requests.post(
+        api_url,
+        data={
+            "chat_id": settings.telegram_channel_id,
+            "text": normalized,
+            "disable_web_page_preview": True,
+        },
+        timeout=120,
+    )
+    response.raise_for_status()
+    payload = response.json()
+
+    if not payload.get("ok"):
+        raise RuntimeError(f"Telegram API error: {payload}")
+
+    result = payload.get("result", {})
+    return result.get("message_id")
