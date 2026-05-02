@@ -7,8 +7,8 @@ from app.config import settings
 from app.main import publish_one_fact
 
 
-TARGET_HOUR = 22
-TARGET_MINUTE = 50
+TARGET_HOUR = 23
+TARGET_MINUTE = 5
 MAX_START_MINUTE = 59
 
 
