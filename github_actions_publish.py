@@ -16,11 +16,11 @@ def _send_text_via_curl(text: str) -> int:
         "-X",
         "POST",
         api_url,
-        "-d",
+        "--data-urlencode",
         f"chat_id={settings.telegram_channel_id}",
-        "-d",
+        "--data-urlencode",
         f"text={text}",
-        "-d",
+        "--data-urlencode",
         "disable_web_page_preview=true",
     ]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
@@ -37,9 +37,7 @@ def main() -> int:
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
 
     try:
-        message_id = _send_text_via_curl(
-            "Тестовий пост ✅\n\nПублікацію запущено через GitHub Actions."
-        )
+        message_id = _send_text_via_curl("Test message from API")
         print(
             f"[{now.isoformat(timespec='seconds')}] Telegram text published via curl: "
             f"Telegram ID: {message_id}"
