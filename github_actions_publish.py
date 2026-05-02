@@ -6,13 +6,35 @@ import subprocess
 from zoneinfo import ZoneInfo
 
 from app.config import settings
-from app.main import publish_one_fact
-from app.telegram_publisher import publish_text_to_telegram
 
 
 TARGET_HOUR = 23
 TARGET_MINUTE = 5
 MAX_START_MINUTE = 59
+
+
+def _send_text_via_curl(text: str) -> int:
+    api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+    command = [
+        "curl",
+        "-sS",
+        "-X",
+        "POST",
+        api_url,
+        "-d",
+        f"chat_id={settings.telegram_channel_id}",
+        "-d",
+        f"text={text}",
+        "-d",
+        "disable_web_page_preview=true",
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, check=False)
+    if completed.returncode != 0:
+        raise RuntimeError(completed.stderr.strip() or "curl failed")
+    payload = json.loads(completed.stdout or "{}")
+    if not payload.get("ok"):
+        raise RuntimeError(f"Telegram API error: {payload}")
+    return int(payload.get("result", {}).get("message_id", 0))
 
 
 def main() -> int:
@@ -26,53 +48,17 @@ def main() -> int:
 
     print(f"[{now.isoformat(timespec='seconds')}] Running scheduled publish")
     try:
-        result = publish_one_fact()
-        if result is None:
-            raise RuntimeError("publish_one_fact returned no result")
+        message_id = _send_text_via_curl(
+            "Тестовий пост ✅\n\nПублікацію запущено через GitHub Actions."
+        )
         print(
-            f"[{now.isoformat(timespec='seconds')}] Published: "
-            f"{result.title} | Telegram ID: {result.telegram_message_id}"
+            f"[{now.isoformat(timespec='seconds')}] Telegram text published via curl: "
+            f"Telegram ID: {message_id}"
         )
         return 0
     except Exception as exc:
-        print(f"[{now.isoformat(timespec='seconds')}] Publish pipeline failed: {exc}")
-        text = (
-            "Тестовий пост ✅\n\n"
-            "Автопублікація не змогла пройти повний пайплайн, тому "
-            "відправлено запасний текстовий пост."
-        )
-        try:
-            api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
-            command = [
-                "curl",
-                "-sS",
-                "-X",
-                "POST",
-                api_url,
-                "-d",
-                f"chat_id={settings.telegram_channel_id}",
-                "-d",
-                f"text={text}",
-                "-d",
-                "disable_web_page_preview=true",
-            ]
-            completed = subprocess.run(command, capture_output=True, text=True, check=False)
-            if completed.returncode != 0:
-                raise RuntimeError(completed.stderr.strip() or "curl failed")
-            payload = json.loads(completed.stdout or "{}")
-            if not payload.get("ok"):
-                raise RuntimeError(f"Telegram API error: {payload}")
-            print(
-                f"[{now.isoformat(timespec='seconds')}] Fallback text published via curl: "
-                f"Telegram ID: {payload.get('result', {}).get('message_id')}"
-            )
-            return 0
-        except Exception as fallback_exc:
-            print(
-                f"[{now.isoformat(timespec='seconds')}] Fallback text publish failed: "
-                f"{fallback_exc}"
-            )
-            return 1
+        print(f"[{now.isoformat(timespec='seconds')}] Telegram publish failed: {exc}")
+        return 1
 
 
 if __name__ == "__main__":
