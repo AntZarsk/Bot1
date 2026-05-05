@@ -16,7 +16,8 @@ def ensure_dir(path: Path) -> None:
 
 
 def normalize_fact_key(source: str, source_id: str, text: str) -> str:
-    payload = f"{source}:{source_id}:{text.strip().lower()}"
+    normalized_text = " ".join(text.strip().lower().split())
+    payload = normalized_text
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
