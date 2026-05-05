@@ -12,7 +12,12 @@ from app.media_generator import generate_cover_image
 from app.models import PublishedPost, RawFact, ProcessedPost
 from app.sheets_logger import append_post_log
 from app.telegram_publisher import publish_text_to_telegram, publish_to_telegram
-from app.utils import append_used_key, ensure_dir, normalize_fact_key, read_used_keys
+from app.utils import (
+    append_used_key,
+    ensure_dir,
+    normalize_fact_key,
+    read_used_keys,
+)
 
 
 logging.basicConfig(
@@ -30,6 +35,13 @@ def pick_unused_fact(facts: list[RawFact]) -> Optional[RawFact]:
         if key not in used_keys:
             return fact
     return None
+
+
+def collect_internet_facts() -> list[RawFact]:
+    facts = [fact for fact in collect_raw_facts() if fact.source != "fallback"]
+    if facts:
+        return facts
+    return [fact for fact in collect_raw_facts() if fact.source != "fallback"]
 
 
 def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
@@ -62,13 +74,13 @@ def publish_one_fact() -> Optional[PublishedPost]:
     ensure_dir(settings.media_dir)
 
     logger.info("Collecting raw facts")
-    facts = collect_raw_facts()
+    facts = collect_internet_facts()
     if not facts:
-        raise RuntimeError("No raw facts collected")
+        raise RuntimeError("No internet facts collected")
 
     raw_fact = pick_unused_fact(facts)
     if raw_fact is None:
-        raise RuntimeError("No unused facts found")
+        raise RuntimeError("No unused internet facts found")
 
     fact_key = normalize_fact_key(raw_fact.source, raw_fact.source_id, raw_fact.text)
 
