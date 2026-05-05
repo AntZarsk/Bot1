@@ -29,7 +29,7 @@ def pick_unused_fact(facts: list[RawFact]) -> Optional[RawFact]:
         key = normalize_fact_key(fact.source, fact.source_id, fact.text)
         if key not in used_keys:
             return fact
-    return facts[0] if facts else None
+    return None
 
 
 def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
