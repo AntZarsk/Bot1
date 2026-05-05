@@ -23,13 +23,23 @@ def run_job() -> None:
 
 
 def build_times(count: int) -> list[str]:
-    return ["23:00", "03:00", "07:00", "11:00", "15:00", "19:00"]
+    if count <= 0:
+        return []
+    start_hour = 3
+    step = max(1, 24 // count)
+    times: list[str] = []
+    for index in range(count):
+        hour = (start_hour + index * step) % 24
+        times.append(f"{hour:02d}:00")
+    return times
 
 
 def main() -> None:
     load_dotenv()
     posts_per_day = int(os.getenv("POSTS_PER_DAY", "5"))
     times = build_times(posts_per_day)
+    if not times:
+        raise ValueError("POSTS_PER_DAY must be greater than 0")
 
     for run_time in times:
         schedule.every().day.at(run_time).do(run_job)
