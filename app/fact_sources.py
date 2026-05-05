@@ -67,14 +67,16 @@ def fetch_reddit_facts(limit: int = 15) -> List[RawFact]:
 
 def fetch_wikimedia_featured(limit: int = 5) -> List[RawFact]:
     facts: List[RawFact] = []
-    url = "https://commons.wikimedia.org/w/api.php"
+    url = "https://en.wikipedia.org/w/api.php"
     params = {
         "action": "query",
         "format": "json",
-        "prop": "coordinates|description",
+        "prop": "extracts|description",
         "generator": "random",
         "grnnamespace": "0",
         "grnlimit": str(limit),
+        "explaintext": "1",
+        "exintro": "1",
     }
     try:
         response = requests.get(url, params=params, timeout=20)
@@ -84,15 +86,19 @@ def fetch_wikimedia_featured(limit: int = 5) -> List[RawFact]:
         for page in pages.values():
             title = str(page.get("title", "")).strip()
             description = str(page.get("description", "")).strip()
+            extract = str(page.get("extract", "")).strip()
             if not title:
+                continue
+            text = extract or description or title
+            if len(text) < 20:
                 continue
             facts.append(
                 RawFact(
                     source="wikimedia",
                     source_id=str(page.get("pageid", title)),
                     title=title,
-                    text=description or title,
-                    url=f"https://commons.wikimedia.org/wiki/{title.replace(' ', '_')}",
+                    text=text[:500],
+                    url=f"https://en.wikipedia.org/wiki/{title.replace(' ', '_')}",
                 )
             )
     except Exception:
