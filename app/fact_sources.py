@@ -3,10 +3,8 @@ from __future__ import annotations
 from random import shuffle
 from typing import List
 
-import praw
 import requests
 
-from app.config import settings
 from app.models import RawFact
 
 
@@ -64,40 +62,7 @@ FALLBACK_FACTS = [
 
 
 def fetch_reddit_facts(limit: int = 15) -> List[RawFact]:
-    facts: List[RawFact] = []
-    if not settings.reddit_client_id or not settings.reddit_client_secret:
-        return facts
-
-    try:
-        reddit = praw.Reddit(
-            client_id=settings.reddit_client_id,
-            client_secret=settings.reddit_client_secret,
-            user_agent=settings.reddit_user_agent,
-        )
-
-        for subreddit_name in ["todayilearned", "showerthoughts"]:
-            subreddit = reddit.subreddit(subreddit_name)
-            for post in subreddit.hot(limit=limit):
-                title = getattr(post, "title", "").strip()
-                selftext = getattr(post, "selftext", "").strip()
-                text = title if not selftext else f"{title}. {selftext}"
-                if len(text) < 20:
-                    continue
-                facts.append(
-                    RawFact(
-                        source=f"reddit:{subreddit_name}",
-                        source_id=str(getattr(post, "id", "")),
-                        title=title[:120],
-                        text=text[:500],
-                        url=f"https://www.reddit.com{getattr(post, 'permalink', '')}",
-                    )
-                )
-                if len(facts) >= limit:
-                    return facts
-    except Exception:
-        return facts
-
-    return facts
+    return []
 
 
 def fetch_wikimedia_featured(limit: int = 5) -> List[RawFact]:
@@ -138,7 +103,6 @@ def fetch_wikimedia_featured(limit: int = 5) -> List[RawFact]:
 
 def collect_raw_facts() -> List[RawFact]:
     facts: List[RawFact] = []
-    facts.extend(fetch_reddit_facts(limit=10))
     facts.extend(fetch_wikimedia_featured(limit=5))
 
     if facts:
