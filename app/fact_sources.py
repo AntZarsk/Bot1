@@ -78,8 +78,11 @@ def fetch_wikimedia_featured(limit: int = 5) -> List[RawFact]:
         "explaintext": "1",
         "exintro": "1",
     }
+    headers = {
+        "User-Agent": "worldfacts_bot/1.0 (https://github.com/AntZarsk/Bot1)"
+    }
     try:
-        response = requests.get(url, params=params, timeout=20)
+        response = requests.get(url, params=params, headers=headers, timeout=20)
         response.raise_for_status()
         payload = response.json()
         pages = payload.get("query", {}).get("pages", {})
