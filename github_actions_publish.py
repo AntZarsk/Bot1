@@ -44,7 +44,7 @@ def _print_env_diagnostics() -> None:
 def _should_publish(now: datetime) -> bool:
     if os.getenv("FORCE_PUBLISH", "").strip() == "1":
         return True
-    return now.hour in ALLOWED_HOURS and now.minute == 0
+    return now.hour in ALLOWED_HOURS
 
 
 def main() -> int:
