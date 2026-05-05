@@ -23,10 +23,10 @@ title, caption, image_prompt, fact_check_note
 
 Rules:
 - caption must be in Ukrainian
-- caption must be 250-300 words
+- caption must be 280-320 words
 - write it as a vivid story, not as a fact list
 - the country can be any country, but must be clearly identified in the story
-- use 3-5 short scenes or mini-paragraphs to keep it easy to read
+- use 3-5 short paragraphs to keep it easy to read
 - make it emotional, cinematic, and genuinely interesting
 - include emojis naturally, but do not overuse them
 - end with a strong closing sentence and 3-5 relevant hashtags
@@ -61,13 +61,14 @@ URL: {raw_fact.url}
 Write a Ukrainian story about the history of a country inspired by this fact.
 
 Requirements:
-- aim for 250-300 words
+- aim for 280-320 words
 - make it feel like a beautiful narrative, not a dry summary
 - use 3-5 short paragraphs
 - include a clear historical arc: beginning, tension, transformation, ending
 - keep it engaging, emotional, and easy to read
 - add 3-5 relevant hashtags at the end
 - include emojis naturally but sparingly
+- ensure the final caption is close to 300 words, ideally around 300
 """
 
     response = model.generate_content(
