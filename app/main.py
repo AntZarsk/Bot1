@@ -38,9 +38,6 @@ def pick_unused_fact(facts: list[RawFact]) -> Optional[RawFact]:
 
 
 def collect_internet_facts() -> list[RawFact]:
-    facts = [fact for fact in collect_raw_facts() if fact.source != "fallback"]
-    if facts:
-        return facts
     return [fact for fact in collect_raw_facts() if fact.source != "fallback"]
 
 
