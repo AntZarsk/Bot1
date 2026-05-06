@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import html as html_lib
+import random
 from random import shuffle
 from typing import List
 
@@ -99,9 +100,14 @@ def fetch_wikimedia_horror(limit: int = 8) -> List[RawFact]:
     per_query = max(1, limit // max(1, len(HORROR_WIKI_QUERIES)))
     used_titles: set[str] = set()
 
-    for query in HORROR_WIKI_QUERIES:
+    queries = HORROR_WIKI_QUERIES.copy()
+    shuffle(queries)
+    for query in queries:
         if len(facts) >= limit:
             break
+
+        # Vary the offset so Wikipedia search doesn't return the same top results each time.
+        sroffset = random.randint(0, 15) * per_query
 
         params = {
             "action": "query",
@@ -110,6 +116,7 @@ def fetch_wikimedia_horror(limit: int = 8) -> List[RawFact]:
             "srsearch": query,
             "srnamespace": "0",
             "srlimit": str(per_query),
+            "sroffset": str(sroffset),
         }
 
         try:

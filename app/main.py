@@ -42,43 +42,68 @@ def collect_internet_facts() -> list[RawFact]:
 
 
 def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
+    import random
+
     title = raw_fact.title[:120] or "Історія з тіней"
+    fact_text = raw_fact.text.strip()
 
-    paragraph_one = (
-        f"Усе починається непомітно: як звичайний уривок у тексті, як фраза, яку хочеться списати на випадковість. "
-        f"Але {raw_fact.title} не дає спокою. "
-        f"Ти ніби чуєш, як у темряві хтось повільно перевіряє межі реальності… "
-        f"і раптом розумієш: це не просто «факт» — це ключ до страху."
-    )
-    paragraph_two = (
-        f"Насправді все починає складатися в моторошний візерунок. "
-        f"Є моменти, які неможливо пояснити однією причиною: "
-        f"сліди, що повторюються; свідчення, що сходяться не за домовленістю. "
-        f"{raw_fact.text}"
-    )
-    paragraph_three = (
-        f"Коли ти намагаєшся знайти раціональне пояснення, воно вислизає, як вода крізь пальці. "
-        f"З’являються дрібні «підказки» — деталі, які спершу здавались випадковими: "
-        f"зміщений акцент у пам’яті, дивна послідовність подій, тиша в місці, де її не має бути. "
-        f"І тоді стає ясно: жах живе не лише в темряві — він живе в очікуванні."
-    )
-    paragraph_four = (
-        f"Залишається останнє питання: хто вперше відчув це — і чому ми досі про це шепочемо? "
-        f"Нехай це звучить як історія, але вона торкається чогось старого всередині тебе. "
-        f"Спробуй прочитати ще раз — цього разу повільніше. 🕯️"
-    )
+    variants = [
+        {
+            "p1": (
+                f"Ти починаєш читати, як завжди… але {raw_fact.title} чіпляє погляд не логікою, а присутністю. "
+                f"Ніби хтось стирає межу між «було» і «сталось поруч». 🕯️"
+            ),
+            "p2": (
+                f"У {raw_fact.text[:220]}… є те, що повторюється в розповідях: тиша там, де має бути пояснення; "
+                f"знаки, які ніхто не планував залишати; відчуття, що правда дивиться назад. "
+            ),
+            "p3": (
+                f"Спробуй назвати це фактом — і він раптом стає попередженням. "
+                f"І щоразу, коли ти думаєш «це просто історія», воно знову шепоче: не підходь ближче."
+            ),
+        },
+        {
+            "p1": (
+                f"Спершу здається, що {raw_fact.title} — лише уривок із чиєїсь пам’яті. "
+                f"Але потім ловиш дивну закономірність: деталі сходяться, хоча не мали б. "
+                f"Страх завжди знаходить шлях. 👁️"
+            ),
+            "p2": (
+                f"В {raw_fact.text[:220]} причаїлося щось більше за слова: "
+                f"підтекст, який хоче вирости в реальність. Ніби темрява вчиться говорити твоїми сумнівами."
+            ),
+            "p3": (
+                f"Залишається одне питання: хто перший почув це — і чому досі не зупинив ланцюг? "
+                f"Ти вимкнеш світло… але воно не вимикається."
+            ),
+        },
+        {
+            "p1": (
+                f"{raw_fact.title} звучить коротко. Проте в ній ховається довгий коридор тіні. "
+                f"Ти йдеш повільно — бо відчуваєш: кроки рахують не тебе."
+            ),
+            "p2": (
+                f"{fact_text[:240]} Звідси починається той моторошний момент, коли «пояснення» "
+                f"стає слизьким, а факти раптом набувають ваги."
+            ),
+            "p3": (
+                f"І тоді жах приходить не одразу — він підготовлює ґрунт. "
+                f"Запам’ятай: найстрашніше — те, що виглядає буденно… доки не пізно."
+            ),
+        },
+    ]
 
-    caption = f"{paragraph_one}\n\n{paragraph_two}\n\n{paragraph_three}\n\n{paragraph_four}"
+    v = random.choice(variants)
+    caption = f"{v['p1']}\n\n{v['p2']}\n\n{v['p3']}\n#хорор #привиди"
 
-    # Keep Telegram happy (telegram_publisher trims at 1024 chars).
-    # We keep some headroom to avoid the ending being chopped mid-sentence.
-    MAX_CAPTION_CHARS = 1000
+    # Keep Telegram happy (telegram_publisher trims at 1024 chars), and target ~500 chars.
+    MAX_CAPTION_CHARS = 520
     if len(caption) > MAX_CAPTION_CHARS:
         caption = caption[:MAX_CAPTION_CHARS].rsplit("\n", 1)[0].rstrip()
         caption = caption.rstrip(".") + "…"
 
     image_prompt = (
-        f"Realistic horror cover image illustrating: {raw_fact.text}. "
+        f"Realistic horror cover image illustrating: {fact_text}. "
         f"Night scene, moody fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field."
     )
 
@@ -86,7 +111,7 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
         title=title,
         caption=caption,
         image_prompt=image_prompt,
-        fact_check_note="Local fallback (horror)",
+        fact_check_note="Local fallback (horror, template-variant)",
     )
 
 
