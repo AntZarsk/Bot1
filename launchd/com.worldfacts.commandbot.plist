@@ -7,12 +7,12 @@
 
     <key>ProgramArguments</key>
     <array>
-      <string>/usr/bin/python3</string>
-      <string>/Users/antonzaritskyi/Desktop/project2/telegram_command_bot.py</string>
+      <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/.venv/bin/python</string>
+      <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/telegram_command_bot.py</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/antonzaritskyi/Desktop/project2</string>
+    <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2</string>
 
     <key>RunAtLoad</key>
     <true/>
@@ -21,10 +21,10 @@
     <true/>
 
     <key>StandardOutPath</key>
-    <string>/Users/antonzaritskyi/Desktop/project2/logs/commandbot.out.log</string>
+    <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/logs/commandbot.out.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/antonzaritskyi/Desktop/project2/logs/commandbot.err.log</string>
+    <string>/Users/antonzaritskyi/Desktop/VS studio Code/project2/logs/commandbot.err.log</string>
 
     <key>EnvironmentVariables</key>
     <dict>
