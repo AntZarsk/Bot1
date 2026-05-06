@@ -44,51 +44,70 @@ def collect_internet_facts() -> list[RawFact]:
 def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
     import random
 
+    def label_from_title(title: str) -> str:
+        t = (title or "").lower()
+        mapping = [
+            (["ghost", "haunting", "spectre"], "привиди"),
+            (["possession", "possessed"], "одержимість"),
+            (["haunted", "haunted house"], "проклятий дім"),
+            (["exorcism"], "екзорцизм"),
+            (["plague", "black death"], "чорна чума"),
+            (["horror", "supernatural"], "надприродне"),
+            (["urban legend"], "міська легенда"),
+            (["occult"], "окультні знаки"),
+            (["serial killer", "killer"], "серійний убивця"),
+        ]
+        for keys, label in mapping:
+            if any(k in t for k in keys):
+                return label
+        return "страшна історія"
+
+    label = label_from_title(raw_fact.title)
+    # For image generation we can still use English snippet, but caption must stay Ukrainian.
+    fact_text = (raw_fact.text or "").strip()
     title = raw_fact.title[:120] or "Історія з тіней"
-    fact_text = raw_fact.text.strip()
 
     variants = [
         {
             "p1": (
-                f"Ти починаєш читати, як завжди… але {raw_fact.title} чіпляє погляд не логікою, а присутністю. "
+                f"Ти починаєш читати, як завжди… але це — {label}. "
                 f"Ніби хтось стирає межу між «було» і «сталось поруч». 🕯️"
             ),
             "p2": (
-                f"У {raw_fact.text[:220]}… є те, що повторюється в розповідях: тиша там, де має бути пояснення; "
-                f"знаки, які ніхто не планував залишати; відчуття, що правда дивиться назад. "
+                "У темряві повторюються одні й ті самі деталі: тиша там, де має бути пояснення; "
+                "знаки, які ніхто не планував залишати; відчуття, що правда дивиться назад."
             ),
             "p3": (
-                f"Спробуй назвати це фактом — і він раптом стає попередженням. "
-                f"І щоразу, коли ти думаєш «це просто історія», воно знову шепоче: не підходь ближче."
+                "Спробуй назвати це фактом — і він раптом стає попередженням. "
+                "І щоразу, коли ти думаєш «це просто історія», воно шепоче: не підходь ближче."
             ),
         },
         {
             "p1": (
-                f"Спершу здається, що {raw_fact.title} — лише уривок із чиєїсь пам’яті. "
-                f"Але потім ловиш дивну закономірність: деталі сходяться, хоча не мали б. "
-                f"Страх завжди знаходить шлях. 👁️"
+                f"Спершу здається, що {label} — лише уривок із чиєїсь пам’яті. "
+                "Але потім ловиш дивну закономірність: деталі сходяться, хоча не мали б. 👁️"
             ),
             "p2": (
-                f"В {raw_fact.text[:220]} причаїлося щось більше за слова: "
-                f"підтекст, який хоче вирости в реальність. Ніби темрява вчиться говорити твоїми сумнівами."
+                "Тут ніби ховається підказка для тих, хто вміє чути: "
+                "кроки в коридорі звучать так, ніби ти — зайвий."
             ),
             "p3": (
-                f"Залишається одне питання: хто перший почув це — і чому досі не зупинив ланцюг? "
-                f"Ти вимкнеш світло… але воно не вимикається."
+                "Залишається одне питання: хто перший почув це — і чому досі не зупинив ланцюг? "
+                "Ти вимкнеш світло… але воно не вимикається."
             ),
         },
         {
             "p1": (
-                f"{raw_fact.title} звучить коротко. Проте в ній ховається довгий коридор тіні. "
-                f"Ти йдеш повільно — бо відчуваєш: кроки рахують не тебе."
+                f"{label} звучить коротко. Проте в цьому — довгий коридор тіні. "
+                "Ти йдеш повільно — бо відчуваєш: кроки рахують не тебе."
             ),
             "p2": (
-                f"{fact_text[:240]} Звідси починається той моторошний момент, коли «пояснення» "
-                f"стає слизьким, а факти раптом набувають ваги."
+                "Найстрашніше починається тоді, коли розум відмовляється пояснювати: "
+                "залишається лише відчуття, що щось дивиться у відповідь."
             ),
             "p3": (
-                f"І тоді жах приходить не одразу — він підготовлює ґрунт. "
-                f"Запам’ятай: найстрашніше — те, що виглядає буденно… доки не пізно."
+                "І тоді жах приходить не одразу — він підготовлює ґрунт. "
+                "Запам’ятай: найстрашніше — те, що виглядає буденно… доки не пізно."
             ),
         },
     ]
@@ -103,15 +122,15 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
         caption = caption.rstrip(".") + "…"
 
     image_prompt = (
-        f"Realistic horror cover image illustrating: {fact_text}. "
-        f"Night scene, moody fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field."
+        f"Realistic horror cover image illustrating: {fact_text or raw_fact.title}. "
+        "Night scene, moody fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field."
     )
 
     return ProcessedPost(
         title=title,
         caption=caption,
         image_prompt=image_prompt,
-        fact_check_note="Local fallback (horror, template-variant)",
+        fact_check_note="Local fallback (horror, caption Ukrainian, no raw text injection)",
     )
 
 
