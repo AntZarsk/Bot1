@@ -344,8 +344,16 @@ def publish_one_fact() -> Optional[PublishedPost]:
     def _word_count(s: str) -> int:
         return len([w for w in (s or "").replace("\n", " ").split(" ") if w.strip()])
 
-    if _word_count(processed.story) < 430:
-        logger.warning("Story too short (%s words), using local fallback", _word_count(processed.story))
+    story_words = _word_count(processed.story)
+    latin_letters = len(re.findall(r"[A-Za-z]", processed.story or ""))
+
+    # If Gemini returns too short story or includes too much English/Latin text, fall back.
+    if story_words < 480 or latin_letters > 30:
+        logger.warning(
+            "Story failed quality check (words=%s, latin_letters=%s), using local fallback",
+            story_words,
+            latin_letters,
+        )
         processed = build_local_processed_post(raw_fact)
 
     try:
