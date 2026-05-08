@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import fcntl
 import logging
 import re
 from collections import Counter
 from datetime import datetime
 from typing import Optional
+
+import requests
 
 from app.config import settings
 from app.fact_sources import collect_raw_facts
@@ -307,83 +310,90 @@ def publish_one_fact() -> Optional[PublishedPost]:
     ensure_dir(settings.data_dir)
     ensure_dir(settings.media_dir)
 
-    logger.info("Collecting raw facts")
-    facts = collect_internet_facts()
-    if not facts:
-        raise RuntimeError("No internet facts collected")
-
-    raw_fact = pick_unused_fact(facts)
-    if raw_fact is None:
-        raise RuntimeError("No unused internet facts found")
-
-    fact_key = normalize_fact_key(raw_fact.source, raw_fact.source_id, raw_fact.text)
-
-    logger.info("Processing fact with Gemini or fallback")
-    try:
-        processed = process_fact_with_gemini(raw_fact)
-    except Exception as gemini_exc:
-        logger.warning("Gemini failed, using local fallback: %s", gemini_exc)
-        processed = build_local_processed_post(raw_fact)
-
-    if not _story_bigrams_repeat_ok(processed.story):
-        logger.warning("Story failed bigram repeat check; using local fallback")
-        processed = build_local_processed_post(raw_fact)
-
-    def _word_count(s: str) -> int:
-        return len([w for w in (s or "").replace("\n", " ").split(" ") if w.strip()])
-
-    story_words = _word_count(processed.story)
-    latin_letters = len(re.findall(r"[A-Za-z]", processed.story or ""))
-
-    # If Gemini returns a bad language/truncated story, use local fallback BEFORE generating/uploading.
-    if story_words < 480 or latin_letters > 30:
-        logger.warning(
-            "Story failed quality check before publishing (words=%s, latin_letters=%s); using local fallback",
-            story_words,
-            latin_letters,
-        )
-        processed = build_local_processed_post(raw_fact)
-
-    logger.info("Generating cover image")
-    media = generate_cover_image(processed.image_prompt, processed.title)
-
-    logger.info("Publishing to Telegram (photo + combined caption+story, single message)")
-    message_id: Optional[int] = None
-    try:
-        combined_caption = _build_single_post_caption(processed.caption, processed.story)
-        message_id = publish_to_telegram(media.path, combined_caption)
-    except Exception as telegram_exc:
-        # Photo didn't send => fallback to single text message (no photo).
-        logger.warning("Media Telegram publish failed, using single-text fallback: %s", telegram_exc)
+    # Prevent parallel runs that can cause “2 posts per cycle”.
+    lock_path = settings.data_dir / "publish.lock"
+    with lock_path.open("w", encoding="utf-8") as lock_file:
         try:
-            publish_text_to_telegram(
-                f"{processed.title}\n\n{processed.caption}\n\n{processed.story}".strip()
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            logger.warning("Another publish_one_fact run is already in progress. Skipping this run.")
+            return None
+
+        logger.info("Collecting raw facts")
+        facts = collect_internet_facts()
+        if not facts:
+            raise RuntimeError("No internet facts collected")
+
+        raw_fact = pick_unused_fact(facts)
+        if raw_fact is None:
+            raise RuntimeError("No unused internet facts found")
+
+        fact_key = normalize_fact_key(raw_fact.source, raw_fact.source_id, raw_fact.text)
+
+        logger.info("Processing fact with Gemini or fallback")
+        try:
+            processed = process_fact_with_gemini(raw_fact)
+        except Exception as gemini_exc:
+            logger.warning("Gemini failed, using local fallback: %s", gemini_exc)
+            processed = build_local_processed_post(raw_fact)
+
+        if not _story_bigrams_repeat_ok(processed.story):
+            logger.warning("Story failed bigram repeat check; using local fallback")
+            processed = build_local_processed_post(raw_fact)
+
+        def _word_count(s: str) -> int:
+            return len([w for w in (s or "").replace("\n", " ").split(" ") if w.strip()])
+
+        story_words = _word_count(processed.story)
+        latin_letters = len(re.findall(r"[A-Za-z]", processed.story or ""))
+
+        # If Gemini returns a bad language/truncated story, use local fallback BEFORE generating/uploading.
+        if story_words < 480 or latin_letters > 30:
+            logger.warning(
+                "Story failed quality check before publishing (words=%s, latin_letters=%s); using local fallback",
+                story_words,
+                latin_letters,
             )
-        except Exception as single_exc:
-            logger.warning("Single-text Telegram publish failed: %s", single_exc)
+            processed = build_local_processed_post(raw_fact)
 
-    instagram_media_id = None
-    try:
-        logger.info("Publishing to Instagram")
-        instagram_media_id = publish_to_instagram(media.path, processed.caption)
-    except Exception as instagram_exc:
-        logger.warning("Instagram publish failed: %s", instagram_exc)
+        logger.info("Generating cover image")
+        media = generate_cover_image(processed.image_prompt, processed.title)
 
-    published = PublishedPost(
-        published_at=datetime.now(),
-        title=processed.title,
-        caption=processed.caption,
-        media_path=media.path,
-        telegram_message_id=message_id,
-        instagram_media_id=instagram_media_id,
-        status="Published",
-        source=raw_fact.source,
-        source_id=raw_fact.source_id,
-    )
-    append_post_log(published)
-    append_used_key(settings.used_facts_file, fact_key)
-    logger.info("Published post: %s", processed.title)
-    return published
+        logger.info("Publishing to Telegram (photo + combined caption+story, single message)")
+        message_id: Optional[int] = None
+        try:
+            combined_caption = _build_single_post_caption(processed.caption, processed.story)
+            message_id = publish_to_telegram(media.path, combined_caption)
+        except Exception as telegram_exc:
+            # Hard guarantee: never send a second Telegram post if photo sending could be partial/duplicated.
+            # We'll log and skip any fallback text message.
+            logger.warning(
+                "Media Telegram publish failed. Skipping text fallback to avoid duplicates. %s",
+                telegram_exc,
+            )
+
+        instagram_media_id = None
+        try:
+            logger.info("Publishing to Instagram")
+            instagram_media_id = publish_to_instagram(media.path, processed.caption)
+        except Exception as instagram_exc:
+            logger.warning("Instagram publish failed: %s", instagram_exc)
+
+        published = PublishedPost(
+            published_at=datetime.now(),
+            title=processed.title,
+            caption=processed.caption,
+            media_path=media.path,
+            telegram_message_id=message_id,
+            instagram_media_id=instagram_media_id,
+            status="Published",
+            source=raw_fact.source,
+            source_id=raw_fact.source_id,
+        )
+        append_post_log(published)
+        append_used_key(settings.used_facts_file, fact_key)
+        logger.info("Published post: %s", processed.title)
+        return published
 
 
 def main() -> None:
