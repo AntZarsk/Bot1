@@ -43,6 +43,35 @@ def collect_internet_facts() -> list[RawFact]:
     return [fact for fact in collect_raw_facts() if fact.source != "fallback"]
 
 
+def _extract_hashtags_tail(caption: str) -> tuple[str, str]:
+    """
+    Extract hashtags from the END of caption and return (caption_without_tags, tags_str).
+    """
+    text = (caption or "").strip()
+    tags = re.findall(r"#[0-9A-Za-zА-Яа-я_]+", text)
+
+    # Remove only trailing tag tail (best-effort)
+    text_without_tags = re.sub(r"(?:\s*#[0-9A-Za-zА-Яа-я_]+)+\s*$", "", text).strip()
+    tags_str = " ".join(tags)
+    return text_without_tags, tags_str
+
+
+def _build_single_post_caption(photo_caption: str, story: str) -> str:
+    caption_no_tags, tags_str = _extract_hashtags_tail(photo_caption)
+    story_text = (story or "").strip()
+
+    parts: list[str] = []
+    if caption_no_tags:
+        parts.append(caption_no_tags)
+    if story_text:
+        parts.append(story_text)
+
+    merged = "\n\n".join(parts).strip()
+    if tags_str:
+        merged = f"{merged}\n{tags_str}".strip()
+    return merged
+
+
 def _normalize_words_for_bigrams(text: str) -> list[str]:
     # lowercase + keep only letters/digits; split into words
     normalized = re.sub(r"[^0-9A-Za-zА-Яа-яІіЇїЄєҐґ_]+", " ", (text or "").lower())
@@ -172,9 +201,10 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
 
     caption = f"{body}\n{tags_str}"
 
+    story_hint = (hint or label or "").strip()
     image_prompt = (
-        f"Realistic horror cover image illustrating: {fact_text or raw_fact.title}. "
-        "Night scene, moody fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field."
+        f"Realistic horror cover image illustrating: {story_hint}. "
+        "Pitch black night, heavy fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field, no daylight, no warm lights."
     )
 
     # FULL story for Telegram (single sendMessage later).
@@ -301,18 +331,14 @@ def publish_one_fact() -> Optional[PublishedPost]:
     logger.info("Generating cover image")
     media = generate_cover_image(processed.image_prompt, processed.title)
 
-    logger.info("Publishing to Telegram (photo + caption)")
+    merged_caption = _build_single_post_caption(processed.caption, processed.story)
+
+    logger.info("Publishing to Telegram (photo + full story, one post)")
     try:
-        message_id = publish_to_telegram(media.path, processed.caption)
+        message_id = publish_to_telegram(media.path, merged_caption)
     except Exception as telegram_exc:
         logger.warning("Media Telegram publish failed, falling back to text: %s", telegram_exc)
-        message_id = publish_text_to_telegram(f"{processed.title}\n\n{processed.caption}")
-
-    logger.info("Publishing full story to Telegram (single message)")
-    try:
-        publish_text_to_telegram(f"{processed.title}\n\n{processed.story}".strip())
-    except Exception as story_exc:
-        logger.warning("Story Telegram publish failed (ignored): %s", story_exc)
+        message_id = publish_text_to_telegram(f"{processed.title}\n\n{merged_caption}")
 
     instagram_media_id = None
     try:
