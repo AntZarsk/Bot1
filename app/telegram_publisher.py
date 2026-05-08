@@ -76,6 +76,11 @@ def publish_text_to_telegram(text: str, reply_to_message_id: Optional[int] = Non
     if not settings.telegram_channel_id:
         raise ValueError("TELEGRAM_CHANNEL_ID is not configured")
 
+    # Safety: in this bot we must publish exactly one Telegram post (photo with caption).
+    # If some legacy code tries to send a reply text (reply_to_message_id), skip it to prevent duplicates.
+    if reply_to_message_id is not None:
+        return None
+
     normalized = text.strip()
     if len(normalized) > TEXT_LIMIT:
         normalized = normalized[: TEXT_LIMIT - 1].rstrip() + "…"
