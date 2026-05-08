@@ -329,40 +329,38 @@ def publish_one_fact() -> Optional[PublishedPost]:
         logger.warning("Story failed bigram repeat check; using local fallback")
         processed = build_local_processed_post(raw_fact)
 
-    logger.info("Generating cover image")
-    media = generate_cover_image(processed.image_prompt, processed.title)
-
-    # Telegram caption for photo is limited (~1024 chars), so we send full story as a separate text message.
-    logger.info("Publishing to Telegram (photo + short caption)")
-    try:
-        message_id = publish_to_telegram(media.path, processed.caption)
-    except Exception as telegram_exc:
-        logger.warning("Media Telegram publish failed, falling back to text: %s", telegram_exc)
-        message_id = publish_text_to_telegram(f"{processed.title}\n\n{processed.caption}")
-
-    logger.info("Publishing full story to Telegram (single text message, reply to photo)")
     def _word_count(s: str) -> int:
         return len([w for w in (s or "").replace("\n", " ").split(" ") if w.strip()])
 
     story_words = _word_count(processed.story)
     latin_letters = len(re.findall(r"[A-Za-z]", processed.story or ""))
 
-    # If Gemini returns too short story or includes too much English/Latin text, fall back.
+    # If Gemini returns a bad language/truncated story, use local fallback BEFORE generating/uploading.
     if story_words < 480 or latin_letters > 30:
         logger.warning(
-            "Story failed quality check (words=%s, latin_letters=%s), using local fallback",
+            "Story failed quality check before publishing (words=%s, latin_letters=%s); using local fallback",
             story_words,
             latin_letters,
         )
         processed = build_local_processed_post(raw_fact)
 
+    logger.info("Generating cover image")
+    media = generate_cover_image(processed.image_prompt, processed.title)
+
+    logger.info("Publishing to Telegram (photo + combined caption+story, single message)")
+    message_id: Optional[int] = None
     try:
-        publish_text_to_telegram(
-            f"{processed.title}\n\n{processed.story}".strip(),
-            reply_to_message_id=message_id,
-        )
-    except Exception as story_exc:
-        logger.warning("Story Telegram publish failed (ignored): %s", story_exc)
+        combined_caption = _build_single_post_caption(processed.caption, processed.story)
+        message_id = publish_to_telegram(media.path, combined_caption)
+    except Exception as telegram_exc:
+        # Photo didn't send => fallback to single text message (no photo).
+        logger.warning("Media Telegram publish failed, using single-text fallback: %s", telegram_exc)
+        try:
+            publish_text_to_telegram(
+                f"{processed.title}\n\n{processed.caption}\n\n{processed.story}".strip()
+            )
+        except Exception as single_exc:
+            logger.warning("Single-text Telegram publish failed: %s", single_exc)
 
     instagram_media_id = None
     try:

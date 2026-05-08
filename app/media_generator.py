@@ -16,6 +16,11 @@ def _build_safe_name(title: str) -> str:
     return "_".join(safe_name.split())[:60] or "cover"
 
 
+def _is_probably_jpeg(content: bytes) -> bool:
+    # JPEG signature: starts with FF D8 FF
+    return len(content) >= 3 and content[0:3] == b"\xff\xd8\xff"
+
+
 def generate_cover_image(prompt: str, title: str) -> MediaAsset:
     if not prompt.strip():
         raise ValueError("Image prompt is empty")
@@ -28,7 +33,14 @@ def generate_cover_image(prompt: str, title: str) -> MediaAsset:
     try:
         response = requests.get(url, timeout=180)
         response.raise_for_status()
-        output_path.write_bytes(response.content)
+        content = response.content
+
+        # Some failures from image endpoints return HTML/JSON/error bytes with 200,
+        # which Telegram then treats as an invalid photo.
+        if not _is_probably_jpeg(content):
+            raise RuntimeError("Pollinations did not return a valid JPEG payload")
+
+        output_path.write_bytes(content)
     except Exception as exc:
         fallback_image = Path("test_telegram.jpg")
         if fallback_image.exists():
