@@ -18,6 +18,7 @@ class RawFact:
 class ProcessedPost:
     title: str
     caption: str
+    story: str
     image_prompt: str
     fact_check_note: str
 
