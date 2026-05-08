@@ -267,7 +267,7 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
         return len([w for w in s.replace("\n", " ").split(" ") if w.strip()])
 
     # Try to hit ~500 words for the local fallback.
-    target_min_words = 480
+    target_min_words = 500
     extra_blocks = [
         "Ти помічаєш, що тінь рухається на півкроку пізніше: спершу здається — збій світла, та ні. "
         "Кожного разу, коли ти кліпаєш, у темряві додається ще одна «деталь», якої не було хвилину тому. "
@@ -332,14 +332,29 @@ def publish_one_fact() -> Optional[PublishedPost]:
     logger.info("Generating cover image")
     media = generate_cover_image(processed.image_prompt, processed.title)
 
-    merged_caption = _build_single_post_caption(processed.caption, processed.story)
-
-    logger.info("Publishing to Telegram (photo + full story, one post)")
+    # Telegram caption for photo is limited (~1024 chars), so we send full story as a separate text message.
+    logger.info("Publishing to Telegram (photo + short caption)")
     try:
-        message_id = publish_to_telegram(media.path, merged_caption)
+        message_id = publish_to_telegram(media.path, processed.caption)
     except Exception as telegram_exc:
         logger.warning("Media Telegram publish failed, falling back to text: %s", telegram_exc)
-        message_id = publish_text_to_telegram(f"{processed.title}\n\n{merged_caption}")
+        message_id = publish_text_to_telegram(f"{processed.title}\n\n{processed.caption}")
+
+    logger.info("Publishing full story to Telegram (single text message, reply to photo)")
+    def _word_count(s: str) -> int:
+        return len([w for w in (s or "").replace("\n", " ").split(" ") if w.strip()])
+
+    if _word_count(processed.story) < 430:
+        logger.warning("Story too short (%s words), using local fallback", _word_count(processed.story))
+        processed = build_local_processed_post(raw_fact)
+
+    try:
+        publish_text_to_telegram(
+            f"{processed.title}\n\n{processed.story}".strip(),
+            reply_to_message_id=message_id,
+        )
+    except Exception as story_exc:
+        logger.warning("Story Telegram publish failed (ignored): %s", story_exc)
 
     instagram_media_id = None
     try:

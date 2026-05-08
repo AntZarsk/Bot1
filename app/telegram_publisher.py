@@ -70,7 +70,7 @@ def publish_to_telegram(media_path: str, caption: str) -> Optional[int]:
     return asyncio.run(_send_media_async(media_path, caption))
 
 
-def publish_text_to_telegram(text: str) -> Optional[int]:
+def publish_text_to_telegram(text: str, reply_to_message_id: Optional[int] = None) -> Optional[int]:
     if not settings.telegram_bot_token:
         raise ValueError("TELEGRAM_BOT_TOKEN is not configured")
     if not settings.telegram_channel_id:
@@ -81,13 +81,18 @@ def publish_text_to_telegram(text: str) -> Optional[int]:
         normalized = normalized[: TEXT_LIMIT - 1].rstrip() + "…"
 
     api_url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/sendMessage"
+
+    payload = {
+        "chat_id": settings.telegram_channel_id,
+        "text": normalized,
+        "disable_web_page_preview": True,
+    }
+    if reply_to_message_id is not None:
+        payload["reply_to_message_id"] = int(reply_to_message_id)
+
     response = requests.post(
         api_url,
-        data={
-            "chat_id": settings.telegram_channel_id,
-            "text": normalized,
-            "disable_web_page_preview": True,
-        },
+        data=payload,
         timeout=120,
     )
     if response.status_code == 404:
