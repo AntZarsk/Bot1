@@ -46,7 +46,6 @@ def main() -> None:
         print(f"Scheduled post at {run_time}")
 
     print("Scheduler started. Keep this process running.")
-    run_job()
 
     while True:
         schedule.run_pending()
