@@ -172,6 +172,11 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
 
     caption = f"{body}\n{tags_str}"
 
+    image_prompt = (
+        f"Realistic horror cover image illustrating: {fact_text or raw_fact.title}. "
+        "Night scene, moody fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field."
+    )
+
     # FULL story for Telegram (single sendMessage later).
     # Target: ~500 words, 3-5 short paragraphs, no hashtags.
     hint = " ".join((fact_text or "").strip().split()[:42]).strip()
