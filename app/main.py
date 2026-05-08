@@ -201,7 +201,8 @@ def build_local_processed_post(raw_fact: RawFact) -> ProcessedPost:
 
     caption = f"{body}\n{tags_str}"
 
-    story_hint = (hint or label or "").strip()
+    # Use fact_text/label for image keywords (don't depend on `hint`, which is defined later).
+    story_hint = " ".join((fact_text or "").split()[:10]).strip() or label
     image_prompt = (
         f"Realistic horror cover image illustrating: {story_hint}. "
         "Pitch black night, heavy fog, cinematic rim lighting, high contrast, eerie atmosphere, shallow depth of field, no daylight, no warm lights."
